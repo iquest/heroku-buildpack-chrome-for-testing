@@ -59,15 +59,38 @@ CHANNEL="$(echo -n "$channel" | awk '{ print toupper($0) }')"
 # Detect requested channel or default to stable
 if [ -f "$ENV_DIR/GOOGLE_CHROME_VERSION" ]; then
   VERSION=$(cat "$ENV_DIR/GOOGLE_CHROME_VERSION")
-  echo "Using env var GOOGLE_CHROME_VERSION=$version" | indent
+  echo "Using env var GOOGLE_CHROME_VERSION=$VERSION" | indent
 else
   VERSION="$(curl --silent --show-error --fail --retry 3 --retry-connrefused --connect-timeout 10 "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_$CHANNEL")"
 fi
 
 echo "Resolved $CHANNEL version $VERSION" | indent
 
-echo "Downloading Chrome" | indent
-ZIP_URL="https://storage.googleapis.com/chrome-for-testing-public/$VERSION/linux64/chrome-linux64.zip"
+# Detect requested build or default to the full Chrome.
+# "headless-shell" installs chrome-headless-shell. It is smaller and uses less memory, but it has no visible browser.
+if [ -f "$ENV_DIR/GOOGLE_CHROME_BUILD" ]; then
+  BUILD=$(cat "$ENV_DIR/GOOGLE_CHROME_BUILD")
+  echo "Using env var GOOGLE_CHROME_BUILD=$BUILD" | indent
+else
+  BUILD=chrome
+fi
+
+case "$BUILD" in
+  chrome)
+    CHROME_DIR="chrome-linux64"
+    CHROME_BIN="chrome"
+    ;;
+  headless-shell)
+    CHROME_DIR="chrome-headless-shell-linux64"
+    CHROME_BIN="chrome-headless-shell"
+    ;;
+  *)
+    error "GOOGLE_CHROME_BUILD must be 'chrome' or 'headless-shell', not '$BUILD'."
+    ;;
+esac
+
+echo "Downloading $CHROME_BIN" | indent
+ZIP_URL="https://storage.googleapis.com/chrome-for-testing-public/$VERSION/linux64/$CHROME_DIR.zip"
 ZIP_LOCATION="$INSTALL_DIR/chrome.zip"
 curl --silent --show-error --fail --retry 3 --retry-connrefused --connect-timeout 10 -o "${ZIP_LOCATION}" "${ZIP_URL}" | indent
 unzip -q -o "$ZIP_LOCATION" -d "$INSTALL_DIR" | indent
@@ -84,11 +107,15 @@ source "$BUILDPACK_DIR/bin/install-chrome-dependencies"
 
 echo "Adding executables to PATH" | indent
 mkdir -p "$BUILD_DIR/.profile.d"
-echo "export PATH=\$HOME/.chrome-for-testing/chrome-linux64:\$HOME/.chrome-for-testing/chromedriver-linux64:\$PATH" >> "$BUILD_DIR/.profile.d/chrome-for-testing.sh"
+echo "export PATH=\$HOME/.chrome-for-testing/$CHROME_DIR:\$HOME/.chrome-for-testing/chromedriver-linux64:\$PATH" >> "$BUILD_DIR/.profile.d/chrome-for-testing.sh"
+if [ "$BUILD" = "headless-shell" ]; then
+  # Ferrum and Cuprite read BROWSER_PATH. They do not find chrome-headless-shell on PATH. An app config var wins.
+  echo "export BROWSER_PATH=\${BROWSER_PATH:-\$HOME/.chrome-for-testing/$CHROME_DIR/$CHROME_BIN}" >> "$BUILD_DIR/.profile.d/chrome-for-testing.sh"
+fi
 
 # Verify the executables are actually present
-export PATH="$BUILD_DIR/.chrome-for-testing/chrome-linux64:$BUILD_DIR/.chrome-for-testing/chromedriver-linux64:$PATH"
-which chrome | indent
+export PATH="$BUILD_DIR/.chrome-for-testing/$CHROME_DIR:$BUILD_DIR/.chrome-for-testing/chromedriver-linux64:$PATH"
+which "$CHROME_BIN" | indent
 which chromedriver | indent
 
-echo "Installed Chrome for Testing $CHANNEL version $VERSION" | indent
+echo "Installed Chrome for Testing ($CHROME_BIN) $CHANNEL version $VERSION" | indent

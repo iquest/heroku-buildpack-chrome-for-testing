@@ -32,6 +32,23 @@ by [Google](https://googlechromelabs.github.io/chrome-for-testing/).
 You can control the channel of the release by setting the `GOOGLE_CHROME_CHANNEL`
 config variable to `Stable`, `Beta`, `Dev`, or `Canary`, and then deploy/build the app.
 
+## Selecting a Fixed Chrome Version
+
+To install one exact version, set the `GOOGLE_CHROME_VERSION` config variable, for example `133.0.6943.141`.
+The [Chrome for Testing dashboard](https://googlechromelabs.github.io/chrome-for-testing/) shows the available versions.
+When this variable is set, the buildpack ignores `GOOGLE_CHROME_CHANNEL`.
+
+## Installing chrome-headless-shell
+
+By default, this buildpack installs the full Chrome (`chrome`).
+Set the `GOOGLE_CHROME_BUILD` config variable to `headless-shell` to install `chrome-headless-shell` instead.
+
+* `chrome-headless-shell` is smaller (about 108 MB instead of 160 MB as a zip file) and uses less memory.
+* It has no visible browser. It runs in headless mode only.
+* The buildpack adds it to `PATH` and sets `BROWSER_PATH` to its location, for Ferrum and Cuprite. An app config var `BROWSER_PATH` has priority.
+
+The allowed values are `chrome` (default) and `headless-shell`.
+
 ## Migrating from Separate Buildpacks
 
 ### Remove Existing Installations

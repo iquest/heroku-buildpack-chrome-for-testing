@@ -7,9 +7,10 @@ jobs:
     strategy:
       matrix:
         stack_version: [22, 24, 26]
+        build: [chrome, headless-shell]
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
     - name: Check Installation
-      run: ./bin/test.sh ${{ matrix.stack_version }}
+      run: ./bin/test.sh ${{ matrix.stack_version }} ${{ matrix.build }}

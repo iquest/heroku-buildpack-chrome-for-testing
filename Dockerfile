@@ -13,6 +13,9 @@ USER root
 RUN useradd -m non-root-user
 USER non-root-user
 RUN mkdir -p /tmp/build /tmp/cache /tmp/env
+# The test sets the build (chrome or headless-shell) as an app config var.
+ARG GOOGLE_CHROME_BUILD=chrome
+RUN echo -n "${GOOGLE_CHROME_BUILD}" > /tmp/env/GOOGLE_CHROME_BUILD
 COPY --chown=non-root-user . /buildpack
 
 # Sanitize the environment seen by the buildpack, to prevent reliance on
